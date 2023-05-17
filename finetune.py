@@ -12,7 +12,7 @@ import warnings
 assert (
     "LlamaTokenizer" in transformers._import_structure["models.llama"]
 ), "LLaMA is now in HuggingFace's main branch.\nPlease reinstall it: pip uninstall transformers && pip install git+https://github.com/huggingface/transformers.git"
-from transformers import LlamaForCausalLM, LlamaTokenizer
+from transformers import LlamaForCausalLM, LlamaTokenizer, BitsAndBytesConfig
 from peft import (
     prepare_model_for_int8_training,
     LoraConfig,
@@ -36,11 +36,11 @@ args = parser.parse_args()
 if not args.wandb:
     os.environ["WANDB_MODE"] = "disable"
 # optimized for RTX 4090. for larger GPUs, increase some of these?
-MICRO_BATCH_SIZE = 8  # this could actually be 5 but i like powers of 2
-BATCH_SIZE = 256
+MICRO_BATCH_SIZE = 2  # this could actually be 5 but i like powers of 2
+BATCH_SIZE = 32
 MAX_STEPS = None
 GRADIENT_ACCUMULATION_STEPS = BATCH_SIZE // MICRO_BATCH_SIZE
-EPOCHS = 1  # we don't always need 3 tbh
+EPOCHS = 5  # we don't always need 3 tbh
 LEARNING_RATE = 3e-4  # the Karpathy constant
 CUTOFF_LEN = 256  # 256 accounts for about 96% of the data
 LORA_R = 8
@@ -55,6 +55,7 @@ DATA_PATH = args.data_path
 OUTPUT_DIR = args.output_path #"lora-Vicuna"
 
 device_map = "auto"
+quantization_config = BitsAndBytesConfig(llm_int8_enable_fp32_cpu_offload=True)
 world_size = int(os.environ.get("WORLD_SIZE", 1))
 ddp = world_size != 1
 if ddp:
@@ -65,6 +66,7 @@ model = LlamaForCausalLM.from_pretrained(
     args.model_path,
     load_in_8bit=True,
     device_map=device_map,
+    quantization_config=quantization_config,
 )
 tokenizer = LlamaTokenizer.from_pretrained(
     args.model_path, add_eos_token=True
@@ -107,7 +109,9 @@ if args.resume_from_checkpoint:
     # The two files above have a different name depending on how they were saved, but are actually the same.
     if os.path.exists(checkpoint_name):
         print(f"Restarting from {checkpoint_name}")
-        adapters_weights = torch.load(checkpoint_name)
+        adapters_weights = torch.load(checkpoint_name, 
+            map_location=torch.device('cpu'),
+        )
         model = set_peft_model_state_dict(model, adapters_weights)
     else:
         print(f"Checkpoint {checkpoint_name} not found")
@@ -128,8 +132,9 @@ if args.resume_from_checkpoint:
 else:
     MAX_STEPS = now_max_steps
 
-
+# print(model)
 model.print_trainable_parameters()
+print(MAX_STEPS)
 
 def generate_prompt(data_point):
     # sorry about the formatting disaster gotta move fast
@@ -237,12 +242,11 @@ trainer = transformers.Trainer(
     args=transformers.TrainingArguments(
         per_device_train_batch_size=MICRO_BATCH_SIZE,
         gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS,
-        warmup_steps=100,
+        warmup_steps=1,
         num_train_epochs=EPOCHS,
         max_steps=MAX_STEPS,
         learning_rate=LEARNING_RATE,
-        fp16=True,
-        logging_steps=20,
+        logging_steps=1,
         evaluation_strategy="steps" if VAL_SET_SIZE > 0 else "no",
         save_strategy="steps",
         eval_steps=args.eval_steps if VAL_SET_SIZE > 0 else None,

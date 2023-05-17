@@ -51,6 +51,8 @@ try:
 except:
     pass
 
+# print(device)
+
 if device == "cuda":
     model = LlamaForCausalLM.from_pretrained(
         BASE_MODEL,
@@ -114,7 +116,7 @@ if torch.__version__ >= "2" and sys.platform != "win32":
 
 def evaluate(
     input,
-    temperature=0.1,
+    temperature=0.8,
     top_p=0.75,
     top_k=40,
     num_beams=4,
@@ -176,7 +178,7 @@ gr.Interface(
         gr.components.Textbox(
             lines=2, label="Input", placeholder="Tell me about alpacas."
         ),
-        gr.components.Slider(minimum=0, maximum=1, value=0.1, label="Temperature"),
+        gr.components.Slider(minimum=0, maximum=1, value=0.8, label="Temperature"),
         gr.components.Slider(minimum=0, maximum=1, value=0.75, label="Top p"),
         gr.components.Slider(minimum=0, maximum=100, step=1, value=40, label="Top k"),
         gr.components.Slider(minimum=1, maximum=10, step=1, value=4, label="Beams Number"),

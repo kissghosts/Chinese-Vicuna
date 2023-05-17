@@ -767,6 +767,12 @@ class StreamPeftGenerationMixin(PeftModelForCausalLM, StreamGenerationMixin):
             filename,
             map_location=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         )
+
+        # print(model)
+        # print(model.peft_config["default"])
+        # print(get_peft_model_state_dict(model))
+        # print(isinstance(model.peft_config["default"], PromptLearningConfig))
+
         # load the weights into the model
         model = set_peft_model_state_dict(model, adapters_weights)
         if getattr(model, "hf_device_map", None) is not None:
@@ -788,10 +794,11 @@ class StreamPeftGenerationMixin(PeftModelForCausalLM, StreamGenerationMixin):
                 )
             model = dispatch_model(model, device_map=device_map)
             hook = AlignDevicesHook(io_same_device=True)
-            if model.peft_config.peft_type == PeftType.LORA:
+            if model.peft_config["default"].peft_type == PeftType.LORA:
                 add_hook_to_module(model.base_model.model, hook)
             else:
                 remove_hook_from_submodules(model.prompt_encoder)
                 add_hook_to_module(model.base_model, hook)
+        
         return model
 
