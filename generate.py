@@ -105,6 +105,17 @@ def generate_prompt(instruction, input=None):
 
 ### Response:"""
 
+def generate_prompt_alchemy(instruction):
+    return f"""Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+扮演一个专业的数据科学家，并基于Alchemy的ABTest功能回答下面的问题
+
+### Input:
+{instruction}
+
+### Response:"""
+
 
 if not LOAD_8BIT:
     model.half()  # seems to fix bugs for some users.
@@ -125,7 +136,7 @@ def evaluate(
     repetition_penalty=2.0,
     **kwargs,
 ):
-    prompt = generate_prompt(input)
+    prompt = generate_prompt_alchemy(input)
     inputs = tokenizer(prompt, return_tensors="pt")
     input_ids = inputs["input_ids"].to(device)
     generation_config = GenerationConfig(
