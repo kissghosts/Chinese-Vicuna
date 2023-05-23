@@ -40,7 +40,7 @@ MICRO_BATCH_SIZE = 2  # this could actually be 5 but i like powers of 2
 BATCH_SIZE = 32
 MAX_STEPS = None
 GRADIENT_ACCUMULATION_STEPS = BATCH_SIZE // MICRO_BATCH_SIZE
-EPOCHS = 5  # we don't always need 3 tbh
+EPOCHS = 8  # we don't always need 3 tbh
 LEARNING_RATE = 3e-4  # the Karpathy constant
 CUTOFF_LEN = 256  # 256 accounts for about 96% of the data
 LORA_R = 8
@@ -55,7 +55,6 @@ DATA_PATH = args.data_path
 OUTPUT_DIR = args.output_path #"lora-Vicuna"
 
 device_map = "auto"
-quantization_config = BitsAndBytesConfig(llm_int8_enable_fp32_cpu_offload=True)
 world_size = int(os.environ.get("WORLD_SIZE", 1))
 ddp = world_size != 1
 if ddp:
@@ -66,7 +65,6 @@ model = LlamaForCausalLM.from_pretrained(
     args.model_path,
     load_in_8bit=True,
     device_map=device_map,
-    quantization_config=quantization_config,
 )
 tokenizer = LlamaTokenizer.from_pretrained(
     args.model_path, add_eos_token=True
@@ -118,6 +116,7 @@ if args.resume_from_checkpoint:
     
     train_args_path = os.path.join(args.resume_from_checkpoint, "trainer_state.json")
     
+    MAX_STEPS = now_max_steps
     if os.path.exists(train_args_path):
         import json
         base_train_args = json.load(open(train_args_path, 'r'))
@@ -127,8 +126,6 @@ if args.resume_from_checkpoint:
             warnings.warn("epoch {} replace to the base_max_steps {}".format(EPOCHS, base_max_steps))
             EPOCHS = None
             MAX_STEPS = base_max_steps
-        else:
-            MAX_STEPS = now_max_steps
 else:
     MAX_STEPS = now_max_steps
 

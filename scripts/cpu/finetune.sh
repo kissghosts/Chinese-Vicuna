@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DATA_PATH="sample/instruct/data_sample.jsonl" 
+DATA_PATH="sample/abtest.json" 
 OUTPUT_PATH="lora-Vicuna"
 MODEL_PATH="decapoda-research/llama-7b-hf"
 lora_checkpoint="./lora-Vicuna/checkpoint-8000"
@@ -12,8 +12,8 @@ python finetune.py \
 --data_path $DATA_PATH \
 --output_path $OUTPUT_PATH \
 --model_path $MODEL_PATH \
---eval_steps 200 \
---save_steps 200 \
+--eval_steps 3 \
+--save_steps 3 \
 --test_size 0 \
 --resume_from_checkpoint $lora_checkpoint \
 --ignore_data_skip $from_data_beginning
